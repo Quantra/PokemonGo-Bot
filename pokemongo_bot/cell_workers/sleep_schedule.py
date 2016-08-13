@@ -72,19 +72,56 @@ class SleepSchedule(BaseTask):
         )
 
     def _get_next_sleep_schedule(self):
-        now = datetime.now() + self.SCHEDULING_MARGIN
+        now = datetime.now() # + self.SCHEDULING_MARGIN
         next_time = now.replace(hour=self.time.hour, minute=self.time.minute)
 
         next_time += timedelta(seconds=self._get_random_offset(self.time_random_offset))
+        self.emit_event(
+            'next_sleep',
+            formatted="NOW {time}",
+            data={
+                'time': str(now)
+            }
+        )
+        self.emit_event(
+                'next_sleep',
+                formatted="NEXT TIME {time}",
+                data={
+                    'time': str(next_time)
+                }
+            )
+        self.emit_event(
+                'next_sleep',
+                formatted="NEXT TIME + NEXT DURATION {time}",
+                data={
+                    'time': str(next_time+timedelta(seconds=self._next_duration))
+                }
+            )
 
         next_end_time = next_time + timedelta(seconds=self._next_duration)
         # Check if we are in a sleep, check incase sleep is over night too.  Adjust duration and get to sleep.
-        if next_time <= now <= next_end_time or next_time <= now + timedelta(days=1) <= next_end_time:
+        if next_time <= now < next_end_time \
+            or next_time <= now + timedelta(days=1) < next_end_time:
+
+            self.emit_event(
+                'next_sleep',
+                formatted="IN A SLEEP TIME {time}",
+                data={
+                    'time': str(next_time) + str(now) + str(next_time+timedelta(seconds=self._next_duration))
+                }
+            )
             if next_time > now:
                 next_time -= timedelta(days=1)
             self._next_duration -= int((now - next_time).total_seconds())
         # If sleep time is passed add one day
         elif next_time <= now:
+            self.emit_event(
+                'next_sleep',
+                formatted="SLEEP TOMORROW {time}",
+                data={
+                    'time': str(next_time) + str(now)
+                }
+            )
             next_time += timedelta(days=1)
 
         return next_time
