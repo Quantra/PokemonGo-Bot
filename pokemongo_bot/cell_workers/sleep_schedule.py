@@ -61,8 +61,8 @@ class SleepSchedule(BaseTask):
                 hours=duration_random_offset.hour, minutes=duration_random_offset.minute).total_seconds())
 
     def _schedule_next_sleep(self):
-        self._next_sleep = self._get_next_sleep_schedule()
         self._next_duration = self._get_next_duration()
+        self._next_sleep = self._get_next_sleep_schedule()
         self.emit_event(
             'next_sleep',
             formatted="Next sleep at {time}",
@@ -77,8 +77,14 @@ class SleepSchedule(BaseTask):
 
         next_time += timedelta(seconds=self._get_random_offset(self.time_random_offset))
 
+        next_end_time = next_time + timedelta(seconds=self._next_duration)
+        # Check if we are in a sleep, check incase sleep is over night too.  Adjust duration and get to sleep.
+        if next_time <= now <= next_end_time or next_time <= now + timedelta(days=1) <= next_end_time:
+            if next_time > now:
+                next_time -= timedelta(days=1)
+            self._next_duration -= int((now - next_time).total_seconds())
         # If sleep time is passed add one day
-        if next_time <= now:
+        elif next_time <= now:
             next_time += timedelta(days=1)
 
         return next_time
