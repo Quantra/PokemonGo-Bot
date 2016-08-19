@@ -92,6 +92,12 @@ class PokemonGoBot(Datastore):
         self.heartbeat_counter = 0
         self.last_heartbeat = time.time()
 
+        from db.models import Login
+        test = Login(username=config.username)
+        test.save()
+        print("SAVED TEST", test.username, test.create_date)
+        sys.exit()
+
 
     def start(self):
         self._setup_event_system()

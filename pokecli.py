@@ -36,6 +36,8 @@ import time
 import signal
 from datetime import timedelta
 from getpass import getpass
+
+import django
 from pgoapi.exceptions import NotLoggedInException, ServerSideRequestThrottlingException, ServerBusyOrOfflineException
 from geopy.exc import GeocoderQuotaExceeded
 
@@ -44,6 +46,8 @@ from pokemongo_bot.base_dir import _base_dir
 from pokemongo_bot.health_record import BotEvent
 from pokemongo_bot.plugin_loader import PluginLoader
 from pokemongo_bot.api_wrapper import PermaBannedException
+
+from django.core.management import call_command
 
 try:
     from demjson import jsonlint
@@ -62,7 +66,14 @@ logger.setLevel(logging.INFO)
 
 class SIGINTRecieved(Exception): pass
 
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "settings")
+from django.core.wsgi import get_wsgi_application
+application = get_wsgi_application()
+
 def main():
+    django.setup()
+    call_command('makemigrations', 'db')
+    call_command('migrate', 'db')
     bot = False
 
     def handle_sigint(*args):
