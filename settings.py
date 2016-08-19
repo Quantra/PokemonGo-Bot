@@ -1,3 +1,5 @@
+import time
+
 # User can configure a choice of db backends if they want
 DATABASES = {
     'default': {
@@ -10,11 +12,13 @@ DATABASES = {
     }
 }
 
+# Required do not change
 INSTALLED_APPS = (
     'db',
 )
 
+# Use local time but no DST to ensure date/time integrity of DB
+TIME_ZONE = time.tzname[0]
+
 # Not used but required to run Django
 SECRET_KEY = 'ponieswithmagicalpowers'
-
-USE_TZ = False

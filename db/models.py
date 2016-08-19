@@ -25,3 +25,8 @@ class AutoDateModel(models.Model):
 
 class Login(AutoDateModel):
     username = models.CharField(max_length=255)
+
+
+class CatchLog(AutoDateModel):
+    username = models.CharField(max_length=255)
+    encounter_id = models.CharField(max_length=255)

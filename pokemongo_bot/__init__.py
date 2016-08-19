@@ -12,6 +12,8 @@ import time
 import Queue
 import threading
 
+import django
+from django.core.management import call_command
 from geopy.geocoders import GoogleV3
 from pgoapi import PGoApi
 from pgoapi.utilities import f2i, get_cell_ids
@@ -91,12 +93,6 @@ class PokemonGoBot(Datastore):
         self.heartbeat_threshold = self.config.heartbeat_threshold
         self.heartbeat_counter = 0
         self.last_heartbeat = time.time()
-
-        from db.models import Login
-        test = Login(username=config.username)
-        test.save()
-        print("SAVED TEST", test.username, test.create_date)
-        sys.exit()
 
 
     def start(self):

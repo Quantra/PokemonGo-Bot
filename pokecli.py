@@ -67,18 +67,17 @@ logger.setLevel(logging.INFO)
 class SIGINTRecieved(Exception): pass
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "settings")
-from django.core.wsgi import get_wsgi_application
-application = get_wsgi_application()
 
 def main():
-    django.setup()
-    call_command('makemigrations', 'db')
-    call_command('migrate', 'db')
     bot = False
 
     def handle_sigint(*args):
         raise SIGINTRecieved
     signal.signal(signal.SIGINT, handle_sigint)
+
+    django.setup()
+    call_command('makemigrations', 'db')
+    call_command('migrate', 'db')
 
     try:
         logger.info('PokemonGO Bot v1.0')

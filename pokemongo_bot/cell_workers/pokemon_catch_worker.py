@@ -35,7 +35,6 @@ LOGIC_TO_FUNCTION = {
 
 
 class PokemonCatchWorker(Datastore, BaseTask):
-
     def __init__(self, pokemon, bot, config):
         self.pokemon = pokemon
         super(PokemonCatchWorker, self).__init__(bot, config)
@@ -49,7 +48,7 @@ class PokemonCatchWorker(Datastore, BaseTask):
         self.response_key = ''
         self.response_status_key = ''
 
-        #Config
+        # Config
         self.min_ultraball_to_keep = self.config.get('min_ultraball_to_keep', 10)
 
         self.catch_throw_parameters = self.config.get('catch_throw_parameters', {})
@@ -68,7 +67,6 @@ class PokemonCatchWorker(Datastore, BaseTask):
         self.catchsim_berry_wait_max = self.catchsim_config.get('berry_wait_max', 3)
         self.catchsim_changeball_wait_min = self.catchsim_config.get('changeball_wait_min', 2)
         self.catchsim_changeball_wait_max = self.catchsim_config.get('changeball_wait_max', 3)
-
 
     ############################################################################
     # public methods
@@ -92,13 +90,15 @@ class PokemonCatchWorker(Datastore, BaseTask):
                 if response[self.response_status_key] == ENCOUNTER_STATUS_NOT_IN_RANGE:
                     self.emit_event('pokemon_not_in_range', formatted='Pokemon went out of range!')
                 elif response[self.response_status_key] == ENCOUNTER_STATUS_POKEMON_INVENTORY_FULL:
-                    self.emit_event('pokemon_inventory_full', formatted='Your Pokemon inventory is full! Could not catch!')
+                    self.emit_event('pokemon_inventory_full',
+                                    formatted='Your Pokemon inventory is full! Could not catch!')
                 return WorkerResult.ERROR
         except KeyError:
             return WorkerResult.ERROR
 
         # get pokemon data
-        pokemon_data = response['wild_pokemon']['pokemon_data'] if 'wild_pokemon' in response else response['pokemon_data']
+        pokemon_data = response['wild_pokemon']['pokemon_data'] if 'wild_pokemon' in response else response[
+            'pokemon_data']
         pokemon = Pokemon(pokemon_data)
 
         # skip ignored pokemon
@@ -150,10 +150,17 @@ class PokemonCatchWorker(Datastore, BaseTask):
 
         while True:
             max_catch = self.bot.config.daily_catch_limit
-            if result[0] < max_catch:
-            # catch that pokemon!
+            from db.models import CatchLog
+            pkmn_count = CatchLog.objects.filter(username=self.bot.config.username,
+                                                 create_date__gte=datetime.now() - timedelta(days=1)).count()
+            print "COUNTING POKEMON IN LAST 24H"
+            print pkmn_count
+            # if result[0] < max_catch:
+            if pkmn_count < max_catch:
+                # catch that pokemon!
                 encounter_id = self.pokemon['encounter_id']
-                catch_rate_by_ball = [0] + response['capture_probability']['capture_probability']  # offset so item ids match indces
+                catch_rate_by_ball = [0] + response['capture_probability'][
+                    'capture_probability']  # offset so item ids match indces
                 self._do_catch(pokemon, encounter_id, catch_rate_by_ball, is_vip=is_vip)
                 break
             else:
@@ -349,7 +356,8 @@ class PokemonCatchWorker(Datastore, BaseTask):
             used_berry = False
             changed_ball = False
             if catch_rate_by_ball[current_ball] < ideal_catch_rate_before_throw and berries_to_spare:
-                new_catch_rate_by_ball = self._use_berry(berry_id, berry_count, encounter_id, catch_rate_by_ball, current_ball)
+                new_catch_rate_by_ball = self._use_berry(berry_id, berry_count, encounter_id, catch_rate_by_ball,
+                                                         current_ball)
                 if new_catch_rate_by_ball != catch_rate_by_ball:
                     catch_rate_by_ball = new_catch_rate_by_ball
                     self.inventory.get(ITEM_RAZZBERRY).remove(1)
@@ -367,7 +375,8 @@ class PokemonCatchWorker(Datastore, BaseTask):
 
             # if the rate is still low and we didn't throw a berry before, throw one
             if catch_rate_by_ball[current_ball] < ideal_catch_rate_before_throw and berry_count > 0 and not used_berry:
-                new_catch_rate_by_ball = self._use_berry(berry_id, berry_count, encounter_id, catch_rate_by_ball, current_ball)
+                new_catch_rate_by_ball = self._use_berry(berry_id, berry_count, encounter_id, catch_rate_by_ball,
+                                                         current_ball)
                 if new_catch_rate_by_ball != catch_rate_by_ball:
                     catch_rate_by_ball = new_catch_rate_by_ball
                     self.inventory.get(ITEM_RAZZBERRY).remove(1)
@@ -431,7 +440,7 @@ class PokemonCatchWorker(Datastore, BaseTask):
                 # randomly chooses a number of times to 'show' wobble animation between 1 and flee_count
                 # multiplies this by flee_duration to get total sleep
                 if self.catchsim_flee_count:
-                    sleep((randrange(self.catchsim_flee_count)+1) * self.catchsim_flee_duration)
+                    sleep((randrange(self.catchsim_flee_count) + 1) * self.catchsim_flee_duration)
 
                 continue
 
@@ -451,7 +460,7 @@ class PokemonCatchWorker(Datastore, BaseTask):
                 if self._pct(catch_rate_by_ball[current_ball]) == 100:
                     self.bot.softban = True
 
-         # pokemon caught!
+                    # pokemon caught!
             elif catch_pokemon_status == CATCH_STATUS_SUCCESS:
                 pokemon.id = response_dict['responses']['CATCH_POKEMON']['captured_pokemon_id']
                 self.bot.metrics.captured_pokemon(pokemon.name, pokemon.cp, pokemon.iv_display, pokemon.iv)
@@ -474,8 +483,17 @@ class PokemonCatchWorker(Datastore, BaseTask):
 
                     )
                     with self.bot.database as conn:
-                        conn.execute('''INSERT INTO catch_log (pokemon, cp, iv, encounter_id, pokemon_id) VALUES (?, ?, ?, ?, ?)''', (pokemon.name, pokemon.cp, pokemon.iv, str(encounter_id), pokemon.pokemon_id))
-                    #conn.commit()
+                        conn.execute(
+                            '''INSERT INTO catch_log (pokemon, cp, iv, encounter_id, pokemon_id) VALUES (?, ?, ?, ?, ?)''',
+                            (pokemon.name, pokemon.cp, pokemon.iv, str(encounter_id), pokemon.pokemon_id))
+                    # conn.commit()
+
+                    from db.models import CatchLog
+                    print "SAVING CATCH TO DB"
+                    catch_log = CatchLog(username=self.bot.config.username,
+                                         encounter_id=str(self.pokemon['encounter_id']))
+                    catch_log.save()
+
                     user_data_caught = os.path.join(_base_dir, 'data', 'caught-%s.json' % self.bot.config.username)
                     with open(user_data_caught, 'ab') as outfile:
                         outfile.write(str(datetime.now()))
@@ -496,7 +514,7 @@ class PokemonCatchWorker(Datastore, BaseTask):
                     self.emit_event(
                         'gained_candy',
                         formatted='You now have {quantity} {type} candy!',
-                        data = {
+                        data={
                             'quantity': candy.quantity,
                             'type': candy.type,
                         },
